@@ -130,3 +130,9 @@ class VLASHTrainConfig(TrainPipelineConfig):
     # observation.motion_future. Used by the pi05_motion policy.
     motion_dir: str | None = None
     motion_dim: int = 256
+
+    # SAM2 raw mem-attn latent cache dir (per-episode .npz with `latent`
+    # key shape (T, C, H, W)). When set together with motion_dir and a
+    # pi05_motion_v2 policy, the dataset wraps with the V2 wrapper which
+    # also emits observation.sam2_tokens + observation.action_history.
+    sam2_dir: str | None = None

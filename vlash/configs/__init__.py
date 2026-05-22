@@ -24,6 +24,7 @@ from vlash.configs.train_config import VLASHTrainConfig
 from vlash.policies.pi05 import PI05Config
 from vlash.policies.pi05_uvt import PI05UVTConfig
 from vlash.policies.pi05_motion import PI05MotionConfig
+from vlash.policies.pi05_motion_v2 import PI05MotionV2Config
 from vlash.policies.pi0 import PI0Config
 
 # Register VLASH policy configs with LeRobot's config registry.
@@ -35,6 +36,7 @@ _LRPreTrainedConfig._choice_registry["pi05"] = PI05Config
 _LRPreTrainedConfig._choice_registry["pi0"] = PI0Config
 _LRPreTrainedConfig._choice_registry["pi05_uvt"] = PI05UVTConfig
 _LRPreTrainedConfig._choice_registry["pi05_motion"] = PI05MotionConfig
+_LRPreTrainedConfig._choice_registry["pi05_motion_v2"] = PI05MotionV2Config
 
 __all__ = ["RunConfig", "VLASHTrainConfig", "PI05Config", "PI0Config",
-           "PI05UVTConfig", "PI05MotionConfig"]
+           "PI05UVTConfig", "PI05MotionConfig", "PI05MotionV2Config"]

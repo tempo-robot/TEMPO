@@ -196,7 +196,44 @@ def make_vlash_dataset(cfg: VLASHTrainConfig):
         dataset = UVTWrappedDataset(dataset, cfg.uvt_dir, window=cfg.uvt_window, uvt_dim=cfg.uvt_dim)
 
     # Motion wrapper: inject motion_past + motion_future keys.
-    if getattr(cfg, "motion_dir", None):
+    # For pi05_motion_v2 (sam2_dir + action history) we use the V2 wrappers
+    # which emit observation.sam2_tokens + observation.action_history instead
+    # of motion_past.
+    policy_type = getattr(cfg.policy, "type", "") if getattr(cfg, "policy", None) else ""
+    is_motion_v2 = isinstance(policy_type, str) and policy_type.startswith("pi05_motion_v2")
+    if is_motion_v2 and getattr(cfg, "motion_dir", None) and getattr(cfg, "sam2_dir", None):
+        from vlash.datasets.motion_v2_wrapper import (
+            MotionV2WrappedDataset,
+            SharedObservationMotionV2WrappedDataset,
+        )
+        history_steps = int(getattr(cfg.policy, "action_history_steps", 10))
+        fps = int(getattr(cfg.policy, "dataset_fps", 30))
+        seconds = int(getattr(cfg.policy, "action_history_seconds", 10))
+        steps = history_steps
+        frames_per_bucket = int(round(fps * seconds / steps))
+        if isinstance(dataset, SharedObservationVLASHDataset):
+            logging.info(
+                f"Shared-obs motion_v2 wrapper: motion_dir={cfg.motion_dir} "
+                f"sam2_dir={cfg.sam2_dir} hist_steps={steps} "
+                f"frames_per_bucket={frames_per_bucket}"
+            )
+            dataset = SharedObservationMotionV2WrappedDataset(
+                dataset, cfg.motion_dir, cfg.sam2_dir,
+                action_history_steps=steps,
+                frames_per_bucket=frames_per_bucket,
+            )
+        else:
+            logging.info(
+                f"motion_v2 wrapper: motion_dir={cfg.motion_dir} "
+                f"sam2_dir={cfg.sam2_dir} hist_steps={steps} "
+                f"frames_per_bucket={frames_per_bucket}"
+            )
+            dataset = MotionV2WrappedDataset(
+                dataset, cfg.motion_dir, cfg.sam2_dir,
+                action_history_steps=steps,
+                frames_per_bucket=frames_per_bucket,
+            )
+    elif getattr(cfg, "motion_dir", None):
         from vlash.datasets.motion_wrapper import (
             MotionWrappedDataset,
             SharedObservationMotionWrappedDataset,

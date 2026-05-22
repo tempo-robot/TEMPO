@@ -70,6 +70,10 @@ def get_policy_class(name: str) -> type[PreTrainedPolicy]:
         from vlash.policies.pi05_motion.modeling_pi05_motion import PI05MotionPolicy
         return PI05MotionPolicy
 
+    if name == "pi05_motion_v2":
+        from vlash.policies.pi05_motion_v2.modeling_pi05_motion_v2 import PI05MotionV2Policy
+        return PI05MotionV2Policy
+
     raise NotImplementedError(f"Policy with name {name} is not implemented.")
 
 
