@@ -200,8 +200,15 @@ def make_vlash_dataset(cfg: VLASHTrainConfig):
     # which emit observation.sam2_tokens + observation.action_history instead
     # of motion_past.
     policy_type = getattr(cfg.policy, "type", "") if getattr(cfg, "policy", None) else ""
-    is_motion_v2 = isinstance(policy_type, str) and policy_type.startswith("pi05_motion_v2")
-    if is_motion_v2 and getattr(cfg, "motion_dir", None) and getattr(cfg, "sam2_dir", None):
+    is_motion_v2_or_v3 = isinstance(policy_type, str) and (
+        policy_type.startswith("pi05_motion_v2")
+        or policy_type.startswith("pi05_motion_v3")
+    )
+    # v3 doesn't require motion_dir; v2 does.
+    if is_motion_v2_or_v3 and getattr(cfg, "sam2_dir", None) and (
+        getattr(cfg, "motion_dir", None) is not None
+        or policy_type.startswith("pi05_motion_v3")
+    ):
         from vlash.datasets.motion_v2_wrapper import (
             MotionV2WrappedDataset,
             SharedObservationMotionV2WrappedDataset,
