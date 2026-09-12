@@ -41,13 +41,15 @@ action-chunk regression.
 - [x] u<sub>t</sub> pipeline: PoE MVAE → μ<sub>v</sub> encoder → decoder trainer
 - [x] TEMPO<sub>MOT</sub> SAM2 token precompute
 - [x] Training: multi-GPU DDP, warm start from π0.5
-- [x] Inference: policy server and client
+- [x] Inference on a trained checkpoint: policy server and client
 
 **To do**
 
 - [ ] Release the training datasets (TEMPO-Bench)
 - [ ] Release trained checkpoints
-- [ ] Online TEMPO<sub>MOT</sub> / TEMPO<sub>ACT</sub> buffers for real-robot deployment
+- [ ] Deployment sample code for the I2RT YAM arm — the online TEMPO<sub>MOT</sub> /
+      TEMPO<sub>ACT</sub> buffers a live control loop needs (K-frame image ring buffer,
+      streaming SAM2 tokens, executed-action history)
 - [ ] arXiv preprint and project page
 
 ## 🛠️ Installation
@@ -256,21 +258,23 @@ from π0.5 directly. The training script re-initializes tensors whose shape
 changed, so the backbone, TEMPO<sub>MOT</sub> and TEMPO<sub>ACT</sub> weights transfer when you
 swap heads.
 
-### 5. Deploy on a real robot
+### 5. Inference with a trained checkpoint
+
+Serve a checkpoint over websockets:
 
 ```bash
-# on the inference machine
 uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi05_yam_tempo_ut_dynamic_handover \
-    --policy.dir=./checkpoints/pi05_yam_tempo_ut_dynamic_handover/my_run/5000 \
+    --policy.dir=checkpoints/pi05_yam_tempo_ut_dynamic_handover/my_run/5000 \
     --port=8000
 ```
 
+and query it for an action chunk:
+
 ```python
-# on the robot
 from openpi_client import websocket_client_policy
 
-client = websocket_client_policy.WebsocketClientPolicy(host="<server>", port=8000)
+client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 action_chunk = client.infer({
     "state": state,                       # (A,) float32
     "images": {                           # HWC uint8; "head" is required
@@ -279,23 +283,18 @@ action_chunk = client.infer({
         "right_wrist": right_rgb,
     },
     "prompt": "dynamic handover",
-    "sam2_tokens": sam2_tokens,           # (64, 256) float32
-    "action_history": action_history,     # (10, A) float32 bucket means
+    "sam2_tokens": sam2_tokens,           # (64, 256) float32, TEMPO-MOT
+    "action_history": action_history,     # (10, A) float32 bucket means, TEMPO-ACT
 })["actions"]                             # (action_horizon, A) raw units
 ```
 
 The server auto-detects the PyTorch checkpoint and loads the matching config. The
-u<sub>t</sub> head needs nothing extra from the client — u<sub>t</sub> is what the policy
-predicts, and the frozen decoder turns it into the chunk server-side. See
-`docs/remote_inference.md` and `examples/simple_client/`, and `docs/docker.md` for containerized
-serving.
+u<sub>t</sub> head needs nothing extra from the caller — u<sub>t</sub> is what the policy
+predicts, and the frozen decoder turns it into the action chunk server-side.
 
-This repository does not yet assemble TEMPO's temporal inputs online. A live robot additionally
-needs a K-frame image ring buffer at `obs_history_stride_s` spacing, streaming SAM2 tokens
-(`tools/sam2_encoder.py:stream_extract` is the offline equivalent, designed to run in a
-background thread at camera rate), and a ring buffer of executed actions for
-TEMPO<sub>ACT</sub>. Without the image buffer the frames arrive with no temporal axis and the
-visual-memory attention no-ops.
+To run in-process instead of over a socket, `openpi.policies.policy_config.create_trained_policy`
+takes the same config and checkpoint directory and exposes the same `.infer()`. See
+`docs/remote_inference.md`, `examples/simple_client/`, and `docs/docker.md`.
 
 ## 📊 Dataset
 

@@ -5,6 +5,8 @@ will compute the mean and standard deviation of the data in the dataset and save
 to the config assets directory.
 """
 
+import dataclasses
+
 import numpy as np
 import tqdm
 import tyro
@@ -88,7 +90,16 @@ def create_rlds_dataloader(
 
 def main(config_name: str, max_frames: int | None = None):
     config = _config.get_config(config_name)
-    data_config = config.data.create(config.assets_dirs, config.model)
+
+    # Norm stats only use `state` and `actions`, so drop the side-car loaders. Besides being
+    # wasteful, keeping them would make this step circular: the u_t decoder is trained against
+    # these stats, but its cache is built afterwards, so LoadUtTargets would fail here with a
+    # cache that cannot exist yet.
+    data = config.data
+    for field in ("sam2_cache_dir", "action_history_cache_dir", "ut_cache_dir"):
+        if getattr(data, field, None) is not None:
+            data = dataclasses.replace(data, **{field: None})
+    data_config = data.create(config.assets_dirs, config.model)
 
     if data_config.rlds_data_dir is not None:
         data_loader, num_batches = create_rlds_dataloader(
