@@ -1,5 +1,6 @@
 import logging
 import math
+import pathlib
 
 import torch
 from torch import Tensor
@@ -197,13 +198,22 @@ class PI0Pytorch(nn.Module):
         self.action_in_proj = nn.Linear(self.flow_dim, action_expert_config.width)
         self.action_out_proj = nn.Linear(action_expert_config.width, self.flow_dim)
 
-        # Frozen u_t -> action-chunk decoder, needed only to sample actions. Kept out of the
-        # module tree (a plain attribute) so it never lands in the policy's state dict.
+        # Frozen u_t -> action-chunk decoder, needed only to SAMPLE actions -- training reads its
+        # targets from ut_cache_dir. Kept out of the module tree (a plain attribute) so it never
+        # lands in the policy's state dict. A configured-but-missing path is not fatal here: the
+        # decoder is built after the policy in the normal workflow, and _decode_ut raises a clear
+        # error if sampling is attempted without one.
         self._ut_decoder = None
         ut_decoder_path = getattr(config, "ut_decoder_path", None)
         if self.predict_ut and ut_decoder_path is not None:
-            object.__setattr__(self, "_ut_decoder", UtActionDecoder.from_pretrained(ut_decoder_path))
-            logging.info(f"Loaded u_t action decoder from {ut_decoder_path}")
+            if pathlib.Path(ut_decoder_path).exists():
+                object.__setattr__(self, "_ut_decoder", UtActionDecoder.from_pretrained(ut_decoder_path))
+                logging.info(f"Loaded u_t action decoder from {ut_decoder_path}")
+            else:
+                logging.warning(
+                    f"ut_decoder_path {ut_decoder_path} does not exist; training will work but "
+                    "sampling actions will fail until it is built (tools/ut/train_ut_decoder.py)."
+                )
 
         # TEMPO-MOT SAM2 motion cue: fuse frozen SAM2 memory-attention tokens into the head-cam
         # visual tokens. Zero-gated => no-op at init (warm start is bit-identical).

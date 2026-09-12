@@ -93,7 +93,24 @@ export HF_LEROBOT_HOME=/path/to/lerobot/datasets
 export LEROBOT_VIDEO_BACKEND=pyav
 export SAM2_REPO=/path/to/sam2
 export SAM2_CKPT=/path/to/checkpoints/sam2.1_hiera_tiny.pt
+
+# optional: move the caches and checkpoints off the repo, e.g. onto a scratch disk
+# export TEMPO_DATA_ROOT=/scratch/$USER/tempo/caches
+# export TEMPO_CKPT_ROOT=/scratch/$USER/tempo/checkpoints
 ```
+
+The configs expect their artifacts at these paths, all relative to the working directory unless
+you set the two variables above:
+
+```
+caches/sam2/<repo_id>/            SAM2 token cache        (step 1)
+caches/ut/<repo_id>/              u_t window sidecars     (step 3b)
+caches/ut_decoder/<repo_id>/      u_t decoder             (step 3c)
+checkpoints/pi05_base_pytorch/    converted pi0.5 weights (below)
+checkpoints/<config>/<exp>/<step> your own runs, for warm starts
+```
+
+Run the commands below from the repo root and everything lands where the configs look for it.
 
 Verify:
 
@@ -139,9 +156,9 @@ Every channel is a separate config, so each can be ablated independently:
 | `pi05_yam_tempo_*` | ✓ (3 frames) | ✓ | ✓ | action chunk |
 | `pi05_yam_tempo_ut_*` | ✓ (3 frames) | ✓ | ✓ | **u<sub>t</sub>** |
 
-All defined in `src/openpi/training/config.py`. Point each config's `sam2_cache_dir`,
-`action_history_cache_dir`, `ut_cache_dir`, `ut_decoder_path` and `pytorch_weight_path` at your
-own paths. The knobs:
+All defined in `src/openpi/training/config.py`, with their cache and checkpoint paths derived
+from `TEMPO_DATA_ROOT` / `TEMPO_CKPT_ROOT` (see Installation), so they work from a fresh clone.
+The knobs:
 
 | key | meaning |
 |---|---|
@@ -159,7 +176,7 @@ SAM2 is frozen, so its features are extracted once per dataset rather than in th
 ```bash
 uv run python tools/precompute_sam2_tokens.py \
     --root  $HF_LEROBOT_HOME/<repo_id> \
-    --cache /path/to/sam2_cache \
+    --cache caches/sam2/<repo_id> \
     --start 0 --end 90
 ```
 
@@ -181,23 +198,22 @@ Skip this if you are training with `predict_ut=False`. Three stages, all reading
 ```bash
 # (a) Product-of-Experts MVAE over (SAM2 window, action chunk)
 uv run python tools/ut/train_mvae.py \
-    --cache /path/to/sam2_cache --out /path/to/mvae_run \
+    --cache caches/sam2/<repo_id> --out caches/mvae/<repo_id> \
     --latent-dim 64 --beta 0 --pool-spatial
 
 # (b) per-episode sidecars: mu_v for the window starting at each frame
 uv run python tools/ut/encode_ut_windows.py \
-    --mvae /path/to/mvae_run/checkpoints/last.pt \
-    --cache /path/to/sam2_cache --out /path/to/ut_cache
+    --mvae caches/mvae/<repo_id>/checkpoints/last.pt \
+    --cache caches/sam2/<repo_id> --out caches/ut/<repo_id>
 
 # (c) the decoder the policy uses at inference: mu_v -> action chunk
 uv run python tools/ut/train_ut_decoder.py \
-    --mvae-ckpt /path/to/mvae_run/checkpoints/last.pt \
-    --sam-cache /path/to/sam2_cache --ut-dir /path/to/ut_cache \
+    --mvae-ckpt caches/mvae/<repo_id>/checkpoints/last.pt \
+    --sam-cache caches/sam2/<repo_id> --ut-dir caches/ut/<repo_id> \
     --norm-stats assets/<config_name>/<repo_id> \
-    --out /path/to/decoder_run
+    --out caches/ut_decoder/<repo_id>
 ```
 
-Set `ut_cache_dir` to the stage-(b) output and `ut_decoder_path` to `<decoder_run>/best.pt`.
 `--norm-stats` is required: the decoder is trained in the policy's normalized action space so
 its output can be returned from `sample_actions` unchanged.
 
@@ -234,8 +250,9 @@ uv run torchrun ... scripts/train_pytorch.py pi05_yam_tempo_ut_dynamic_handover 
 tyro renders booleans as a `--flag` / `--no-flag` pair, so use `--model.no-predict-ut`;
 `--model.predict_ut=False` is rejected.
 
-Both heads fine-tune from a `pi05_yam_tempo_mot_video_*` checkpoint, or from
-`pi05_base_pytorch` to start fresh. The training script re-initializes tensors whose shape
+Both heads fine-tune from a `pi05_yam_tempo_mot_video_*` checkpoint — train that first, with
+`--exp_name=my_run`, or point `pytorch_weight_path` at `checkpoints/pi05_base_pytorch` to start
+from π0.5 directly. The training script re-initializes tensors whose shape
 changed, so the backbone, TEMPO<sub>MOT</sub> and TEMPO<sub>ACT</sub> weights transfer when you
 swap heads.
 

@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import dataclasses
 import difflib
 import logging
+import os
 import pathlib
 from typing import Any, Literal, Protocol, TypeAlias
 
@@ -31,6 +32,39 @@ import openpi.training.misc.roboarena_config as roboarena_config
 import openpi.training.optimizer as _optimizer
 import openpi.training.weight_loaders as weight_loaders
 import openpi.transforms as _transforms
+
+# Roots for the artifacts TEMPO builds locally: the SAM2 / u_t caches and the checkpoints.
+# Relative to the working directory by default -- same convention as `assets_base_dir` -- so a
+# fresh clone works without editing this file. Override with the environment variables to keep
+# them on a scratch disk.
+TEMPO_DATA_ROOT = pathlib.Path(os.environ.get("TEMPO_DATA_ROOT", "caches"))
+TEMPO_CKPT_ROOT = pathlib.Path(os.environ.get("TEMPO_CKPT_ROOT", "checkpoints"))
+
+
+def sam2_cache(repo_id: str) -> str:
+    """SAM2 token cache for a dataset (tools/precompute_sam2_tokens.py --cache)."""
+    return str(TEMPO_DATA_ROOT / "sam2" / repo_id)
+
+
+def ut_cache(repo_id: str) -> str:
+    """u_t (mu_v) window sidecars for a dataset (tools/ut/encode_ut_windows.py --out)."""
+    return str(TEMPO_DATA_ROOT / "ut" / repo_id)
+
+
+def ut_decoder(repo_id: str) -> str:
+    """Trained u_t -> action-chunk decoder (tools/ut/train_ut_decoder.py --out)."""
+    return str(TEMPO_DATA_ROOT / "ut_decoder" / repo_id / "best.pt")
+
+
+def pi05_base_ckpt() -> str:
+    """PyTorch pi0.5 base weights, as produced by examples/convert_jax_model_to_pytorch.py."""
+    return str(TEMPO_CKPT_ROOT / "pi05_base_pytorch")
+
+
+def trained_ckpt(config_name: str, exp_name: str = "my_run", step: int = 10_000) -> str:
+    """A checkpoint from an earlier run of this repo, for warm starts."""
+    return str(TEMPO_CKPT_ROOT / config_name / exp_name / str(step))
+
 
 ModelType: TypeAlias = _model.ModelType
 # Work around a tyro issue with using nnx.filterlib.Filter directly.
@@ -935,7 +969,7 @@ _CONFIGS = [
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/openpi/pytorch_checkpoints/pi05_base",
+        pytorch_weight_path=pi05_base_ckpt(),
         num_train_steps=30_000,
     ),
     #
@@ -1140,7 +1174,7 @@ _CONFIGS = [
             weight_loader=weight_loaders.CheckpointWeightLoader(
                 "gs://openpi-assets/checkpoints/pi05_base/params"
             ),
-            pytorch_weight_path="/srv/disk00/dfeng8/work/openpi/pytorch_checkpoints/pi05_base",
+            pytorch_weight_path=pi05_base_ckpt(),
             num_train_steps=10_000,
             save_interval=2_000,
             keep_period=2_000,
@@ -1193,7 +1227,7 @@ _CONFIGS = [
             weight_loader=weight_loaders.CheckpointWeightLoader(
                 "gs://openpi-assets/checkpoints/pi05_base/params"
             ),
-            pytorch_weight_path="/srv/disk00/dfeng8/work/openpi/pytorch_checkpoints/pi05_base",
+            pytorch_weight_path=pi05_base_ckpt(),
             num_train_steps=10_000,
             save_interval=2_000,
             keep_period=2_000,
@@ -1244,7 +1278,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/openpi/pytorch_checkpoints/pi05_base",
+        pytorch_weight_path=pi05_base_ckpt(),
         num_train_steps=10_000,
         save_interval=2_000,
         keep_period=2_000,
@@ -1286,7 +1320,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/openpi/pytorch_checkpoints/pi05_base",
+        pytorch_weight_path=pi05_base_ckpt(),
         num_train_steps=10_000,
         save_interval=2_000,
         keep_period=2_000,
@@ -1316,7 +1350,7 @@ _CONFIGS = [
             default_prompt="dynamic handover",
             action_dim=14,
             cameras=("head", "left_wrist", "right_wrist"),
-            sam2_cache_dir="/scratch/dfeng8/sam2_uvt_cache/sam2.1_t_head_g8_v2_all",
+            sam2_cache_dir=sam2_cache("dynamic_handover_v2_all"),
         ),
         batch_size=128,
         num_workers=4,
@@ -1331,7 +1365,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/tempo_mot_video/checkpoints/pi05_yam_tempo_mot_video_dynamic_handover/tempo_mot_video_run_20260703/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1374,8 +1408,8 @@ _CONFIGS = [
             default_prompt="dynamic handover",
             action_dim=14,
             cameras=("head", "left_wrist", "right_wrist"),
-            sam2_cache_dir="/scratch/dfeng8/sam2_uvt_cache/sam2.1_t_head_g8_v2_all",
-            action_history_cache_dir="/scratch/dfeng8/sam2_uvt_cache/sam2.1_t_head_g8_v2_all",
+            sam2_cache_dir=sam2_cache("dynamic_handover_v2_all"),
+            action_history_cache_dir=sam2_cache("dynamic_handover_v2_all"),
             action_history_steps=10,
             action_history_seconds=10.0,
             action_history_fps=30,
@@ -1393,7 +1427,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/tempo_mot_video/checkpoints/pi05_yam_tempo_mot_video_dynamic_handover/tempo_mot_video_run_20260703/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1424,8 +1458,8 @@ _CONFIGS = [
             default_prompt="catch ball",
             action_dim=7,
             cameras=("head",),
-            sam2_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/sam2_cache",
-            action_history_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/sam2_cache",
+            sam2_cache_dir=sam2_cache("ball_catch_all"),
+            action_history_cache_dir=sam2_cache("ball_catch_all"),
             action_history_steps=10,
             action_history_seconds=10.0,
             action_history_fps=30,
@@ -1443,7 +1477,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/checkpoints/pi05_yam_tempo_mot_video_ball_catch_all/tempo_mot_video_ball_catch_run/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1477,7 +1511,7 @@ _CONFIGS = [
             ut_dim=64,
             ut_window=16,
             # Needed only to sample actions; training reads the targets from ut_cache_dir.
-            ut_decoder_path=None,
+            ut_decoder_path=ut_decoder("dynamic_handover_v2_all"),
         ),
         data=LeRobotYamDataConfig(
             repo_id="dynamic_handover_v2_all",
@@ -1485,12 +1519,12 @@ _CONFIGS = [
             default_prompt="dynamic handover",
             action_dim=14,
             cameras=("head", "left_wrist", "right_wrist"),
-            sam2_cache_dir="/scratch/dfeng8/sam2_uvt_cache/sam2.1_t_head_g8_v2_all",
-            action_history_cache_dir="/scratch/dfeng8/sam2_uvt_cache/sam2.1_t_head_g8_v2_all",
+            sam2_cache_dir=sam2_cache("dynamic_handover_v2_all"),
+            action_history_cache_dir=sam2_cache("dynamic_handover_v2_all"),
             action_history_steps=10,
             action_history_seconds=10.0,
             action_history_fps=30,
-            ut_cache_dir="/scratch/dfeng8/sam2_uvt_cache/ut_windows_u64_v2_all",
+            ut_cache_dir=ut_cache("dynamic_handover_v2_all"),
         ),
         batch_size=128,
         num_workers=4,
@@ -1505,7 +1539,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/tempo_mot_video/checkpoints/pi05_yam_tempo_mot_video_dynamic_handover/tempo_mot_video_run_20260703/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1530,7 +1564,7 @@ _CONFIGS = [
             predict_ut=True,
             ut_dim=64,
             ut_window=16,
-            ut_decoder_path=None,
+            ut_decoder_path=ut_decoder("ball_catch_all"),
         ),
         data=LeRobotYamDataConfig(
             repo_id="ball_catch_all",
@@ -1538,12 +1572,12 @@ _CONFIGS = [
             default_prompt="catch ball",
             action_dim=7,
             cameras=("head",),
-            sam2_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/sam2_cache",
-            action_history_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/sam2_cache",
+            sam2_cache_dir=sam2_cache("ball_catch_all"),
+            action_history_cache_dir=sam2_cache("ball_catch_all"),
             action_history_steps=10,
             action_history_seconds=10.0,
             action_history_fps=30,
-            ut_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/ut_windows_u64",
+            ut_cache_dir=ut_cache("ball_catch_all"),
         ),
         batch_size=128,
         num_workers=4,
@@ -1558,7 +1592,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/checkpoints/pi05_yam_tempo_mot_video_ball_catch_all/tempo_mot_video_ball_catch_run/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1588,7 +1622,7 @@ _CONFIGS = [
             default_prompt="catch ball",
             action_dim=7,
             cameras=("head",),
-            sam2_cache_dir="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/sam2_cache",
+            sam2_cache_dir=sam2_cache("ball_catch_all"),
         ),
         batch_size=128,
         num_workers=4,
@@ -1603,7 +1637,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path="/srv/disk00/dfeng8/work/dynamics/rebuttal/tempo_catch_ball/checkpoints/pi05_yam_tempo_mot_video_ball_catch_all/tempo_mot_video_ball_catch_run/10000",
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
