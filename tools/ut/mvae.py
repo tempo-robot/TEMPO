@@ -2,8 +2,8 @@
 into a single Gaussian latent u.
 
 Inputs per sample:
-  latent: (W, 256, 8, 8) — post-memory-attn SAM2 feature, W=16
-  action: (W, 14)        — yam_dual_arm action vector per frame
+  latent: (W, 256, 8, 8): post-memory-attn SAM2 feature, W=16
+  action: (W, 14)       : yam_dual_arm action vector per frame
 
 Encoders produce per-modality (mu, logvar) in R^d. Precision-weighted fusion:
   inv_var_joint = inv_var_v + inv_var_a + 1 (prior precision 1)

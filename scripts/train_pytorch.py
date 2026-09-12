@@ -606,7 +606,7 @@ def train_loop(config: _config.TrainConfig):
                         param.grad = None
             else:
                 grad_norm = None
-                # Not a full step — skip the rest of this iteration
+                # Not a full step, so skip the rest of this iteration
                 continue
 
             # Collect stats

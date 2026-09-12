@@ -16,16 +16,16 @@ A single-frame vision-language-action policy `π(o_t)` sees **where** things are
 they are going**, and it cannot tell apart visually identical frames that require different
 actions. TEMPO closes both gaps with two cheap temporal channels on a pretrained π0.5:
 
-- **TEMPO<sub>MOT</sub> — scene motion.** Causal temporal attention across the K-frame
+- **TEMPO<sub>MOT</sub> (scene motion).** Causal temporal attention across the K-frame
   observation history, applied at every 4th SigLIP layer and reusing that layer's Q/K/V (no new
   parameters, backbone token count unchanged); plus a frozen SAM2 memory-attention feature of
   the head camera, fused into the current head-cam tokens by a zero-gated cross-attention block.
-- **TEMPO<sub>ACT</sub> — proprioceptive history.** Ten bucket-mean past-action vectors over a
+- **TEMPO<sub>ACT</sub> (proprioceptive history).** Ten bucket-mean past-action vectors over a
   10 s window, injected as extra VLM prefix tokens and as a zero-init residual on the action
   expert's adaRMS conditioning.
 
 **Two prediction heads.** By default the policy flow-matches a compact latent
-**u<sub>t</sub>** — the MVAE code μ<sub>v</sub> of the observation window starting at *t* — and a
+**u<sub>t</sub>**, the MVAE code μ<sub>v</sub> of the observation window starting at *t*, and a
 frozen decoder reads the action chunk out of it. `predict_ut=False` switches back to standard
 action-chunk regression.
 
@@ -33,29 +33,25 @@ action-chunk regression.
 
 **Done**
 
-- [x] **TEMPO<sub>MOT</sub>** — space-time separable attention over the observation history, and
-      the frozen SAM2 motion cue fused into the head-cam tokens
-- [x] **TEMPO<sub>ACT</sub>** — bucket-mean action history as prefix tokens plus a zero-init
-      adaRMS residual
-- [x] Swappable prediction head: u<sub>t</sub> latent (default) or action-chunk regression
-- [x] u<sub>t</sub> pipeline: PoE MVAE → μ<sub>v</sub> encoder → decoder trainer
-- [x] TEMPO<sub>MOT</sub> SAM2 token precompute
-- [x] Training: multi-GPU DDP, warm start from π0.5
-- [x] Inference on a trained checkpoint: policy server and client
+- [x] TEMPO<sub>MOT</sub>
+- [x] TEMPO<sub>ACT</sub>
+- [x] u<sub>t</sub> prediction head
+- [x] u<sub>t</sub> MVAE pipeline
+- [x] SAM2 token precompute
+- [x] Training code
+- [x] Inference code
 
 **To do**
 
-- [ ] Release the training datasets (TEMPO-Bench)
+- [ ] Release training data
 - [ ] Release trained checkpoints
-- [ ] Deployment sample code for the I2RT YAM arm — the online TEMPO<sub>MOT</sub> /
-      TEMPO<sub>ACT</sub> buffers a live control loop needs (K-frame image ring buffer,
-      streaming SAM2 tokens, executed-action history)
-- [ ] arXiv preprint and project page
+- [ ] I2RT YAM deployment
+- [ ] arXiv and project page
 
 ## 🛠️ Installation
 
 Requires Python 3.11+, an NVIDIA GPU, and [uv](https://docs.astral.sh/uv/). CUDA libraries come
-in through uv — no system CUDA install needed.
+in through uv, so no system CUDA install is needed.
 
 ```bash
 git clone <this repo> && cd TEMPO
@@ -69,7 +65,7 @@ resolves to a `+cu126` wheel whose kernels stop at `sm_90`. Install the cu128 bu
 uv pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128
 ```
 
-Patch `transformers` — TEMPO<sub>MOT</sub>'s space-time attention lives in a modified SigLIP, and
+Patch `transformers`. TEMPO<sub>MOT</sub>'s space-time attention lives in a modified SigLIP, so
 the model will not build without it. Use `-f`, since a shell with `cp` aliased to `cp -i` skips
 the overwrites silently:
 
@@ -77,8 +73,8 @@ the overwrites silently:
 cp -rf src/openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/
 ```
 
-Re-run that copy after editing anything under `transformers_replace/` — the model imports the
-*installed* `transformers`, not the source tree.
+Re-run that copy after editing anything under `transformers_replace/`, because the model
+imports the *installed* `transformers`, not the source tree.
 
 Set up SAM2 for the TEMPO<sub>MOT</sub> motion cue (its dependencies are not in the lockfile):
 
@@ -152,9 +148,9 @@ Every channel is a separate config, so each can be ablated independently:
 
 | config | MOT visual memory | MOT SAM2 cue | ACT history | head |
 |---|---|---|---|---|
-| `pi05_yam_*` | — | — | — | action chunk |
-| `pi05_yam_tempo_mot_video_*` | ✓ (6 frames) | — | — | action chunk |
-| `pi05_yam_tempo_mot_*` | ✓ (6 frames) | ✓ | — | action chunk |
+| `pi05_yam_*` | - | - | - | action chunk |
+| `pi05_yam_tempo_mot_video_*` | ✓ (6 frames) | - | - | action chunk |
+| `pi05_yam_tempo_mot_*` | ✓ (6 frames) | ✓ | - | action chunk |
 | `pi05_yam_tempo_*` | ✓ (3 frames) | ✓ | ✓ | action chunk |
 | `pi05_yam_tempo_ut_*` | ✓ (3 frames) | ✓ | ✓ | **u<sub>t</sub>** |
 
@@ -182,8 +178,8 @@ uv run python tools/precompute_sam2_tokens.py \
     --start 0 --end 90
 ```
 
-Each episode becomes `episode_NNNNNN.npz` holding `latent (T, 256, 8, 8)` — the
-post-memory-attention feature of the head camera — plus the raw `action` and `state` columns.
+Each episode becomes `episode_NNNNNN.npz` holding `latent (T, 256, 8, 8)`, the
+post-memory-attention feature of the head camera, plus the raw `action` and `state` columns.
 TEMPO<sub>ACT</sub> derives its history from `action` in the same file, so
 `action_history_cache_dir` is normally the same path and needs no second pass.
 
@@ -241,7 +237,7 @@ uv run torchrun --standalone --nnodes=1 --nproc_per_node=8 \
     --exp_name=my_run --batch_size=128 --checkpoint_base_dir=./checkpoints
 ```
 
-To flip a u<sub>t</sub> config over instead, one flag is enough — `ut_cache_dir` and
+To flip a u<sub>t</sub> config over instead, one flag is enough. `ut_cache_dir` and
 `ut_decoder_path` are then ignored:
 
 ```bash
@@ -252,7 +248,7 @@ uv run torchrun ... scripts/train_pytorch.py pi05_yam_tempo_ut_dynamic_handover 
 tyro renders booleans as a `--flag` / `--no-flag` pair, so use `--model.no-predict-ut`;
 `--model.predict_ut=False` is rejected.
 
-Both heads fine-tune from a `pi05_yam_tempo_mot_video_*` checkpoint — train that first, with
+Both heads fine-tune from a `pi05_yam_tempo_mot_video_*` checkpoint. Train that first with
 `--exp_name=my_run`, or point `pytorch_weight_path` at `checkpoints/pi05_base_pytorch` to start
 from π0.5 directly. The training script re-initializes tensors whose shape
 changed, so the backbone, TEMPO<sub>MOT</sub> and TEMPO<sub>ACT</sub> weights transfer when you
@@ -289,7 +285,7 @@ action_chunk = client.infer({
 ```
 
 The server auto-detects the PyTorch checkpoint and loads the matching config. The
-u<sub>t</sub> head needs nothing extra from the caller — u<sub>t</sub> is what the policy
+u<sub>t</sub> head needs nothing extra from the caller: u<sub>t</sub> is what the policy
 predicts, and the frozen decoder turns it into the action chunk server-side.
 
 To run in-process instead of over a socket, `openpi.policies.policy_config.create_trained_policy`
@@ -331,8 +327,8 @@ Requirements:
 - A **`head` camera is mandatory**. `left_wrist` and `right_wrist` are optional and are
   zero-filled with `image_mask=False` when absent; declare which exist via `cameras` on the data
   config.
-- **fps must match `action_history_fps`** (30 by default) — TEMPO<sub>ACT</sub> uses it to
-  convert its window from seconds to frames.
+- **fps must match `action_history_fps`** (30 by default), since TEMPO<sub>ACT</sub> uses it
+  to convert its window from seconds to frames.
 - Set `action_dim` on the data config and `action_history_dim` on the model config to A.
 - Video frame count must equal the parquet row count and the length recorded in
   `meta/episodes.jsonl`; the SAM2 precompute asserts this.

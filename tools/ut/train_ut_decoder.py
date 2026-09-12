@@ -71,9 +71,9 @@ def policy_normalizer(norm_stats_dir: str, use_quantiles: bool = True):
 
 class MuvWindowDataset(Dataset):
     """For each valid W-frame window in an episode, return:
-       u   (ut_dim,)       — precomputed mu_v of that window (sidecar)
-       act (W, action_dim) — action chunk at the same window, in the POLICY's normalized space
-       sam (W, 256)        — SAM2 latent pooled across spatial dims (auxiliary target)
+       u   (ut_dim,)      : precomputed mu_v of that window (sidecar)
+       act (W, action_dim): action chunk at the same window, in the POLICY's normalized space
+       sam (W, 256)       : SAM2 latent pooled across spatial dims (auxiliary target)
     """
     def __init__(self, episodes: list[int], sam_cache: str, ut_dir: str, normalize_actions):
         self.episodes = sorted(episodes)

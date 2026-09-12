@@ -33,7 +33,7 @@ class SAM2LatentWindowDataset(Dataset):
     """Window dataset over precomputed SAM2 latents + actions + state.
 
     pool_spatial=True replaces the cached (T, 256, 8, 8) latent with the
-    spatially-averaged (T, 256) — the exact representation the prior
+    spatially-averaged (T, 256), the exact representation the prior
     velocity-probe used to get R²≈0.89. Downstream MVAE config is then run
     with sam_grid=1.
     """

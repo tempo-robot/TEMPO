@@ -254,7 +254,7 @@ def main():
             mu_v, lv_v = model.video_enc(latent)
             mu_a, lv_a = model.action_enc(action_n)
             mu, _ = model.fuse_poe(mu_v, lv_v, mu_a, lv_a)
-            # Probe should be based on video-only u — otherwise it trivially
+            # Probe should be based on video-only u, otherwise it trivially
             # uses the action info we want to predict. Use mu_v as the
             # representation. We also save mu (joint).
             us.append(mu_v.cpu().numpy())

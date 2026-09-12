@@ -1190,7 +1190,7 @@ _CONFIGS = [
                 ("head",)),
         ]
     ],
-    # TEMPO-MOT video path only — pi0.5 + visual memory on the same 4 YAM dynamics datasets.
+    # TEMPO-MOT video path only: pi0.5 + visual memory on the same 4 YAM dynamics datasets.
     # The video encoder consumes obs_history frames per camera (space-time separable ViT
     # attention), passing only the current frame's tokens to the backbone. obs_history=1 would
     # reproduce the base pi05_yam_* configs exactly. (Config names keep the historical

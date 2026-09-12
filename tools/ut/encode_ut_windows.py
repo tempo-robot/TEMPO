@@ -2,7 +2,7 @@
 latents of dynamic_handover_v2. Saves per-episode sidecar:
 
   $OUT/episode_NNNNNN.npz keys:
-    u_window: (T - W + 1, 64) float32  — μ_v for window starting at frame t0.
+    u_window: (T - W + 1, 64) float32: μ_v for window starting at frame t0.
     ep_len:   int
 
 Loaded by the vlash_uvt dataset as: u_past(t) = u_window[t-W] (zero-pad if t<W)
@@ -50,12 +50,12 @@ def encode_episodes(model, cache_dir: Path, out_dir: Path, episodes: list[int],
         if len(ds) == 0:
             print(f"  ep={ep}: too short, skipping")
             continue
-        # Iterate sequentially in t0 order — ds.index already sorted.
+        # Iterate sequentially in t0 order; ds.index is already sorted.
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=2)
         us = []
         for batch in loader:
             latent = batch["latent"].to(device, non_blocking=True)
-            # Note: μ_v only depends on `latent` — action is unused here.
+            # Note: μ_v only depends on `latent`; action is unused here.
             mu_v, _ = model.video_enc(latent)
             us.append(mu_v.float().cpu().numpy())
         u_window = np.concatenate(us, axis=0)
