@@ -140,10 +140,13 @@ Every channel is a separate config, so each can be ablated independently:
 | config | MOT visual memory | MOT SAM2 cue | ACT history | head |
 |---|---|---|---|---|
 | `pi05_yam_*` | - | - | - | action chunk |
-| `pi05_yam_tempo_mot_video_*` | ✓ (6 frames) | - | - | action chunk |
-| `pi05_yam_tempo_mot_*` | ✓ (6 frames) | ✓ | - | action chunk |
-| `pi05_yam_tempo_*` | ✓ (3 frames) | ✓ | ✓ | action chunk |
-| `pi05_yam_tempo_ut_*` | ✓ (3 frames) | ✓ | ✓ | **u<sub>t</sub>** |
+| `pi05_yam_tempo_mot_video_*` | ✓ | - | - | action chunk |
+| `pi05_yam_tempo_mot_*` | ✓ | ✓ | - | action chunk |
+| `pi05_yam_tempo_*` | ✓ | ✓ | ✓ | action chunk |
+| `pi05_yam_tempo_ut_*` | ✓ | ✓ | ✓ | **u<sub>t</sub>** |
+
+Each row adds exactly one channel, so the rungs are directly comparable. The visual memory is
+3 frames at a 0.333 s stride throughout.
 
 All defined in `src/openpi/training/config.py`, with their cache and checkpoint paths derived
 from `TEMPO_DATA_ROOT` / `TEMPO_CKPT_ROOT` (see Installation), so they work from a fresh clone.
