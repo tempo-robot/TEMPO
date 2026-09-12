@@ -117,46 +117,36 @@ Each row adds one component. Defined in `src/openpi/training/config.py`; the kno
 (TEMPO<sub>MOT</sub>), `use_action_history` / `action_history_*` (TEMPO<sub>ACT</sub>), and
 `predict_ut` / `ut_dim` / `ut_decoder_path` (the head).
 
-### 1. SAM2 tokens
-
-SAM2 is frozen, so its features are extracted once per dataset:
-
-```bash
-uv run python tools/precompute_sam2_tokens.py \
-    --root $HF_LEROBOT_HOME/<repo_id> --cache caches/sam2/<repo_id> --start 0 --end 90
-```
-
-Each episode becomes `episode_NNNNNN.npz` with `latent (T, 256, 8, 8)` plus the raw `action` and
-`state` columns. TEMPO<sub>ACT</sub> reads its history from `action` in the same file.
-
-### 2. Norm stats
-
-```bash
-JAX_PLATFORMS=cpu uv run scripts/compute_norm_stats.py --config-name pi05_yam_tempo_ut_dynamic_handover
-```
-
-### 3. u_t artifacts
-
-Skip if training with `predict_ut=False`.
+### 1. Prepare
 
 ```bash
 R=<repo_id>
+C=pi05_yam_tempo_ut_dynamic_handover
+
+# SAM2 tokens, extracted once per dataset since the encoder is frozen
+uv run python tools/precompute_sam2_tokens.py \
+    --root $HF_LEROBOT_HOME/$R --cache caches/sam2/$R --start 0 --end 90
+
+# norm stats
+JAX_PLATFORMS=cpu uv run scripts/compute_norm_stats.py --config-name $C
+
+# u_t artifacts, skip when training with predict_ut=False
 uv run python tools/ut/train_mvae.py --cache caches/sam2/$R --out caches/mvae/$R \
     --latent-dim 64 --beta 0 --pool-spatial
-
 uv run python tools/ut/encode_ut_windows.py --mvae caches/mvae/$R/checkpoints/last.pt \
     --cache caches/sam2/$R --out caches/ut/$R
-
 uv run python tools/ut/train_ut_decoder.py --mvae-ckpt caches/mvae/$R/checkpoints/last.pt \
     --sam-cache caches/sam2/$R --ut-dir caches/ut/$R \
-    --norm-stats assets/<config_name>/$R --out caches/ut_decoder/$R
+    --norm-stats assets/$C/$R --out caches/ut_decoder/$R
 ```
 
-`--norm-stats` is required: the decoder is trained in the policy's normalized action space, so
-its output can be returned from `sample_actions` unchanged. Omit `--split` and the first two
+Each SAM2 episode becomes `episode_NNNNNN.npz` with `latent (T, 256, 8, 8)` plus the raw
+`action` and `state` columns; TEMPO<sub>ACT</sub> reads its history from `action` in the same
+file. `--norm-stats` is required, since the decoder is trained in the policy's normalized action
+space so its output can be returned from `sample_actions` unchanged. Omit `--split` and the MVAE
 stages derive a deterministic 80/20 episode split and save it next to the run.
 
-### 4. Train
+### 2. Train
 
 ```bash
 uv run torchrun --standalone --nnodes=1 --nproc_per_node=8 \
@@ -172,7 +162,7 @@ uv run torchrun --standalone --nnodes=1 --nproc_per_node=8 \
 `checkpoints/pi05_base_pytorch` to start from π0.5 directly; tensors whose shape changed are
 re-initialized, so the rest transfers when you swap heads.
 
-### 5. Inference
+### 3. Inference
 
 ```bash
 uv run scripts/serve_policy.py policy:checkpoint \
