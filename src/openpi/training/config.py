@@ -1190,141 +1190,6 @@ _CONFIGS = [
                 ("head",)),
         ]
     ],
-    # TEMPO-MOT video path only: pi0.5 + visual memory on the same 4 YAM dynamics datasets.
-    # The video encoder consumes obs_history frames per camera (space-time separable ViT
-    # attention), passing only the current frame's tokens to the backbone. obs_history=1 would
-    # reproduce the base pi05_yam_* configs exactly. (Config names keep the historical
-    # `pi05_yam_tempo_mot_video_*` spelling: checkpoint dirs, assets and eval scripts key off them.)
-    #
-    *[
-        TrainConfig(
-            name=f"pi05_yam_tempo_mot_video_{_task}",
-            model=pi0_config.Pi0Config(
-                pi05=True,
-                action_horizon=16,
-                obs_history=3,  # TEMPO-MOT default: 3 memory frames
-                obs_history_stride_s=0.333,  # 3 frames @ 30fps -> ~0.67s of dense visual memory
-                temporal_attn_period=4,
-                predict_ut=False,
-            ),
-            data=LeRobotYamDataConfig(
-                repo_id=_repo,
-                base_config=DataConfig(prompt_from_task=True),
-                default_prompt=_prompt,
-                action_dim=_adim,
-                cameras=_cams,
-            ),
-            batch_size=128,
-            num_workers=4,
-            lr_schedule=_optimizer.CosineDecaySchedule(
-                warmup_steps=1_000,
-                peak_lr=5e-5,
-                decay_steps=10_000,
-                decay_lr=5e-6,
-            ),
-            optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-            ema_decay=0.999,
-            weight_loader=weight_loaders.CheckpointWeightLoader(
-                "gs://openpi-assets/checkpoints/pi05_base/params"
-            ),
-            pytorch_weight_path=pi05_base_ckpt(),
-            num_train_steps=10_000,
-            save_interval=2_000,
-            keep_period=2_000,
-        )
-        for _task, _repo, _prompt, _adim, _cams in [
-            ("dynamic_handover", "dynamic_handover_v2_all", "dynamic handover", 14,
-                ("head", "left_wrist", "right_wrist")),
-            ("dynamic_pour", "dynamic_pour_trimmed", "dynamic pour", 7,
-                ("head", "right_wrist")),
-            ("spartan_balls", "spartan_trimmed", "spartan balls", 7,
-                ("head", "right_wrist")),
-            ("ball_drop", "ball_drop", "ball drop", 7,
-                ("head",)),
-        ]
-    ],
-    #
-    # TEMPO-MOT video path on the ball-catching dataset (ball_catch_all): yam_SINGLE_arm (7D), HEAD CAM ONLY
-    # (wrist footage removed from the dataset). Original images -- NO fisheye undistort/crop.
-    # Same visual-memory settings as the other pi05_yam_tempo_mot_video_* configs.
-    #
-    TrainConfig(
-        name="pi05_yam_tempo_mot_video_ball_catch_all",
-        model=pi0_config.Pi0Config(
-            pi05=True,
-            action_horizon=16,
-            obs_history=3,  # TEMPO-MOT default: 3 memory frames
-            obs_history_stride_s=0.333,
-            temporal_attn_period=4,
-            predict_ut=False,
-        ),
-        data=LeRobotYamDataConfig(
-            repo_id="ball_catch_all",
-            base_config=DataConfig(prompt_from_task=True),
-            default_prompt="catch ball",
-            action_dim=7,
-            cameras=("head",),
-        ),
-        batch_size=128,
-        num_workers=4,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=5e-5,
-            decay_steps=10_000,
-            decay_lr=5e-6,
-        ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_base/params"
-        ),
-        pytorch_weight_path=pi05_base_ckpt(),
-        num_train_steps=10_000,
-        save_interval=2_000,
-        keep_period=2_000,
-    ),
-    #
-    # TEMPO-MOT ablation: NO proprioceptive input (vision-only). Identical to
-    # pi05_yam_tempo_mot_video_ball_catch_all except discrete_state_input=False -> the state string is
-    # dropped from the prompt and (pi05 has no continuous state path) the model never sees
-    # proprio. Delta-action targets still use state, so the action space is unchanged.
-    #
-    TrainConfig(
-        name="pi05_yam_tempo_mot_video_ball_catch_all_noproprio",
-        model=pi0_config.Pi0Config(
-            pi05=True,
-            discrete_state_input=False,  # <- the only change: no proprio input
-            action_horizon=16,
-            obs_history=3,  # TEMPO-MOT default: 3 memory frames
-            obs_history_stride_s=0.333,
-            temporal_attn_period=4,
-            predict_ut=False,
-        ),
-        data=LeRobotYamDataConfig(
-            repo_id="ball_catch_all",
-            base_config=DataConfig(prompt_from_task=True),
-            default_prompt="catch ball",
-            action_dim=7,
-            cameras=("head",),
-        ),
-        batch_size=128,
-        num_workers=4,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=5e-5,
-            decay_steps=10_000,
-            decay_lr=5e-6,
-        ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_base/params"
-        ),
-        pytorch_weight_path=pi05_base_ckpt(),
-        num_train_steps=10_000,
-        save_interval=2_000,
-        keep_period=2_000,
-    ),
     #
     # Both TEMPO-MOT paths, no TEMPO-ACT: visual memory + a frozen SAM2 memory-attention motion
     # cue fused into the head-cam visual tokens via a zero-gated cross-attention (fusion into
@@ -1365,7 +1230,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1427,7 +1292,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1477,7 +1342,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1539,7 +1404,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_dynamic_handover"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_dynamic_handover"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1592,7 +1457,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,
@@ -1637,7 +1502,7 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params"
         ),
-        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_video_ball_catch_all"),
+        pytorch_weight_path=trained_ckpt("pi05_yam_tempo_mot_ball_catch_all"),
         num_train_steps=5_000,
         save_interval=1_000,
         keep_period=1_000,

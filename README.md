@@ -105,18 +105,17 @@ uv run python examples/convert_jax_model_to_pytorch.py \
 Run everything from the repo root. Each config reads its artifacts from paths under
 `TEMPO_DATA_ROOT` / `TEMPO_CKPT_ROOT`, so the commands below write exactly where they are read.
 
-| config | MOT visual memory | MOT SAM2 cue | ACT history | head |
-|---|---|---|---|---|
-| `pi05_yam_*` | - | - | - | action chunk |
-| `pi05_yam_tempo_mot_video_*` | ✓ | - | - | action chunk |
-| `pi05_yam_tempo_mot_*` | ✓ | ✓ | - | action chunk |
-| `pi05_yam_tempo_*` | ✓ | ✓ | ✓ | action chunk |
-| `pi05_yam_tempo_ut_*` | ✓ | ✓ | ✓ | **u<sub>t</sub>** |
+| config | TEMPO<sub>MOT</sub> | TEMPO<sub>ACT</sub> | head |
+|---|---|---|---|
+| `pi05_yam_*` | - | - | action chunk |
+| `pi05_yam_tempo_mot_*` | ✓ | - | action chunk |
+| `pi05_yam_tempo_*` | ✓ | ✓ | action chunk |
+| `pi05_yam_tempo_ut_*` | ✓ | ✓ | **u<sub>t</sub>** |
 
-Each row adds one channel. Defined in `src/openpi/training/config.py`; the knobs are
-`obs_history` / `obs_history_stride_s` / `temporal_attn_period` (visual memory),
-`use_sam2_fusion` (SAM2 cue), `use_action_history` / `action_history_*` (TEMPO<sub>ACT</sub>),
-and `predict_ut` / `ut_dim` / `ut_decoder_path` (the head).
+Each row adds one component. Defined in `src/openpi/training/config.py`; the knobs are
+`obs_history` / `obs_history_stride_s` / `temporal_attn_period` / `use_sam2_fusion`
+(TEMPO<sub>MOT</sub>), `use_action_history` / `action_history_*` (TEMPO<sub>ACT</sub>), and
+`predict_ut` / `ut_dim` / `ut_decoder_path` (the head).
 
 ### 1. SAM2 tokens
 
@@ -169,10 +168,9 @@ uv run torchrun --standalone --nnodes=1 --nproc_per_node=8 \
 `<checkpoint_base_dir>/<config_name>/<exp_name>/<step>/`. Swap `pi05_yam_tempo_ut_*` for
 `pi05_yam_tempo_*` to regress action chunks, or flip an existing u<sub>t</sub> config with
 `--model.no-predict-ut` (tyro renders booleans as a `--flag` / `--no-flag` pair, so
-`--model.predict_ut=False` is rejected). Both heads fine-tune from a
-`pi05_yam_tempo_mot_video_*` checkpoint, or from `checkpoints/pi05_base_pytorch` to start from
-π0.5 directly; tensors whose shape changed are re-initialized, so the rest transfers when you
-swap heads.
+`--model.predict_ut=False` is rejected). Configs fine-tune from the rung below them, or from
+`checkpoints/pi05_base_pytorch` to start from π0.5 directly; tensors whose shape changed are
+re-initialized, so the rest transfers when you swap heads.
 
 ### 5. Inference
 
