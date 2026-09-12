@@ -12,22 +12,13 @@
 ![main figure](assets/main.png)
 -->
 
-A single-frame vision-language-action policy `π(o_t)` sees **where** things are but not **where
-they are going**, and it cannot tell apart visually identical frames that require different
-actions. TEMPO closes both gaps with two cheap temporal channels on a pretrained π0.5:
-
-- **TEMPO<sub>MOT</sub> (scene motion).** Causal temporal attention across the K-frame
-  observation history, applied at every 4th SigLIP layer and reusing that layer's Q/K/V (no new
-  parameters, backbone token count unchanged); plus a frozen SAM2 memory-attention feature of
-  the head camera, fused into the current head-cam tokens by a zero-gated cross-attention block.
-- **TEMPO<sub>ACT</sub> (proprioceptive history).** Ten bucket-mean past-action vectors over a
-  10 s window, injected as extra VLM prefix tokens and as a zero-init residual on the action
-  expert's adaRMS conditioning.
-
-**Two prediction heads.** By default the policy flow-matches a compact latent
-**u<sub>t</sub>**, the MVAE code μ<sub>v</sub> of the observation window starting at *t*, and a
-frozen decoder reads the action chunk out of it. `predict_ut=False` switches back to standard
-action-chunk regression.
+This repository contains the official implementation of Temporal Encoding for Motion-aware
+Policy (TEMPO) from the paper "Closing the Representational Gap for VLAs in Dynamic Settings,"
+accepted at CoRL 2026. TEMPO gives a single-frame VLA the temporal context it lacks through two
+lightweight channels, scene motion (TEMPO<sub>MOT</sub>) and proprioceptive history
+(TEMPO<sub>ACT</sub>), adding about 2M parameters (0.08%) without altering the pretrained
+backbone. By default the policy predicts a compact latent u<sub>t</sub> that a frozen decoder
+turns into the action chunk; `predict_ut=False` restores standard action-chunk regression.
 
 ## 🗓️ TODO
 
@@ -349,13 +340,11 @@ distributed by Physical Intelligence; Gemma is used under the license in `LICENS
 <!-- TODO: replace with the published entry -->
 
 ```bibtex
-@misc{tempo2026closing,
+@inproceedings{tempo2026closing,
       title={Closing the Representational Gap for VLAs in Dynamic Settings},
       author={TODO},
+      booktitle={Conference on Robot Learning (CoRL)},
       year={2026},
-      eprint={TODO},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
       url={TODO},
 }
 ```
