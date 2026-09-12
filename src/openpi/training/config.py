@@ -1372,7 +1372,7 @@ _CONFIGS = [
     ),
     #
     # Full TEMPO = tempo_mot + TEMPO-ACT:
-    #   TEMPO-MOT: (a) causal temporal attention over the 6-frame observation history, every 4th
+    #   TEMPO-MOT: (a) causal temporal attention over the 3-frame observation history, every 4th
     #              SigLIP layer at a 0.333 s stride, and (b) frozen SAM2 memory-attention tokens
     #              (head cam) zero-gated cross-attn-fused into the current head-cam visual
     #              tokens.  Both are already in pi05_yam_tempo_mot_*.

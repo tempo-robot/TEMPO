@@ -215,8 +215,8 @@ def _memory_temporal_pos_embedding(
     """Sinusoidal temporal position embedding for TEMPO-MOT's video encoder.
 
     Frames are ordered oldest -> current, with the current (last) frame at temporal
-    distance 0. Following Torne et al. (2026), the embedding is constructed so that
-    it is exactly zero for the current frame (e(0) = 0); this guarantees that with a single
+    distance 0. The embedding is constructed so that it is exactly zero for the current
+    frame (e(0) = 0); this guarantees that with a single
     frame (num_frames == 1) the video encoder reduces exactly to the base single-image ViT.
 
     Returns a tensor of shape (num_frames, dim).
