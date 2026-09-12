@@ -17,8 +17,7 @@ Policy (TEMPO) from the paper "Closing the Representational Gap for VLAs in Dyna
 accepted at CoRL 2026. TEMPO gives a single-frame VLA the temporal context it lacks through two
 lightweight channels, scene motion (TEMPO<sub>MOT</sub>) and proprioceptive history
 (TEMPO<sub>ACT</sub>), adding about 2M parameters (0.08%) without altering the pretrained
-backbone. By default the policy predicts a compact latent u<sub>t</sub> that a frozen decoder
-turns into the action chunk; `predict_ut=False` restores standard action-chunk regression.
+backbone.
 
 ## 🗓️ TODO
 
@@ -59,9 +58,7 @@ wget -P checkpoints https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam
 uv pip install "hydra-core>=1.3.2" "iopath>=0.1.10"
 ```
 
-Use `cp -rf`: a shell with `cp` aliased to `cp -i` skips the overwrites silently. Re-run it after
-editing anything under `transformers_replace/`, since the model imports the installed
-`transformers`, not the source tree.
+Re-run that copy after editing anything under `transformers_replace/`.
 
 ```bash
 export HF_LEROBOT_HOME=/path/to/lerobot/datasets
@@ -112,10 +109,7 @@ Run everything from the repo root. Each config reads its artifacts from paths un
 | `pi05_yam_tempo_*` | ✓ | ✓ | action chunk |
 | `pi05_yam_tempo_ut_*` | ✓ | ✓ | **u<sub>t</sub>** |
 
-Each row adds one component. Defined in `src/openpi/training/config.py`; the knobs are
-`obs_history` / `obs_history_stride_s` / `temporal_attn_period` / `use_sam2_fusion`
-(TEMPO<sub>MOT</sub>), `use_action_history` / `action_history_*` (TEMPO<sub>ACT</sub>), and
-`predict_ut` / `ut_dim` / `ut_decoder_path` (the head).
+Defined in `src/openpi/training/config.py`.
 
 ### 1. Prepare
 
@@ -140,11 +134,8 @@ uv run python tools/ut/train_ut_decoder.py --mvae-ckpt caches/mvae/$R/checkpoint
     --norm-stats assets/$C/$R --out caches/ut_decoder/$R
 ```
 
-Each SAM2 episode becomes `episode_NNNNNN.npz` with `latent (T, 256, 8, 8)` plus the raw
-`action` and `state` columns; TEMPO<sub>ACT</sub> reads its history from `action` in the same
-file. `--norm-stats` is required, since the decoder is trained in the policy's normalized action
-space so its output can be returned from `sample_actions` unchanged. Omit `--split` and the MVAE
-stages derive a deterministic 80/20 episode split and save it next to the run.
+The SAM2 cache holds `latent (T, 256, 8, 8)` plus the raw `action` and `state` columns, which
+TEMPO<sub>ACT</sub> also reads. Omit `--split` for a deterministic 80/20 episode split.
 
 ### 2. Train
 
@@ -154,13 +145,10 @@ uv run torchrun --standalone --nnodes=1 --nproc_per_node=8 \
     --exp_name=my_run --batch_size=128 --checkpoint_base_dir=./checkpoints
 ```
 
-`batch_size` is the global batch. Checkpoints land in
-`<checkpoint_base_dir>/<config_name>/<exp_name>/<step>/`. Swap `pi05_yam_tempo_ut_*` for
-`pi05_yam_tempo_*` to regress action chunks, or flip an existing u<sub>t</sub> config with
-`--model.no-predict-ut` (tyro renders booleans as a `--flag` / `--no-flag` pair, so
-`--model.predict_ut=False` is rejected). Configs fine-tune from the rung below them, or from
-`checkpoints/pi05_base_pytorch` to start from π0.5 directly; tensors whose shape changed are
-re-initialized, so the rest transfers when you swap heads.
+`batch_size` is the global batch; checkpoints land in
+`<checkpoint_base_dir>/<config_name>/<exp_name>/<step>/`. Each config fine-tunes from the rung
+below it, or from `checkpoints/pi05_base_pytorch`. To regress action chunks instead, use a
+`pi05_yam_tempo_*` config or pass `--model.no-predict-ut`.
 
 ### 3. Inference
 
@@ -183,9 +171,8 @@ action_chunk = client.infer({
 })["actions"]                             # (action_horizon, A) raw units
 ```
 
-The u<sub>t</sub> head needs nothing extra from the caller: the frozen decoder turns the
-predicted latent into the action chunk server-side. For in-process use,
-`openpi.policies.policy_config.create_trained_policy` exposes the same `.infer()`.
+For in-process use, `openpi.policies.policy_config.create_trained_policy` exposes the same
+`.infer()`.
 
 ## 📊 Dataset
 
@@ -203,14 +190,11 @@ Each parquet holds one episode, one row per frame, with `action` (A,) and `obser
 (A,) float32, plus the standard `frame_index` / `episode_index` / `timestamp` / `index` /
 `task_index` columns. A = 14 for a dual-arm robot, 7 for single-arm.
 
-- A `head` camera is required; the wrist views are optional and zero-filled when absent. Declare
-  which exist via `cameras` on the data config.
-- fps must match `action_history_fps` (30 by default), which converts the TEMPO<sub>ACT</sub>
-  window from seconds to frames.
+- A `head` camera is required; wrist views are optional. Set `cameras` on the data config.
+- fps must match `action_history_fps` (30 by default).
 - Set `action_dim` on the data config and `action_history_dim` on the model config to A.
 - Video frame count must equal the parquet row count and the length in `meta/episodes.jsonl`.
-- The caches are keyed by `episode_index` and `frame_index`, so episode numbering must stay
-  consistent between the dataset and the caches.
+- Caches are keyed by `episode_index` and `frame_index`.
 
 ## ❤️ Acknowledgements
 
