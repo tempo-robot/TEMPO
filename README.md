@@ -17,22 +17,10 @@ backbone.
 
 ## 🗓️ TODO
 
-**Done**
-
-- [x] TEMPO<sub>MOT</sub>
-- [x] TEMPO<sub>ACT</sub>
-- [x] u<sub>t</sub> prediction head
-- [x] u<sub>t</sub> MVAE pipeline
-- [x] SAM2 token precompute
-- [x] Training code
-- [x] Inference code
-
-**To do**
-
 - [ ] Release training data
 - [ ] Release trained checkpoints
 - [ ] I2RT YAM deployment
-- [ ] arXiv and project page
+- [x] arXiv and project page
 
 ## 🛠️ Installation
 
