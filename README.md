@@ -200,15 +200,15 @@ Built on [openpi](https://github.com/Physical-Intelligence/openpi) (π0 / π0.5)
 Intelligence; Gemma is used under the license in `LICENSE_GEMMA.txt`.
 
 ## 📝 Citation
-
-<!-- TODO: replace with the published entry -->
-
+If you find our work helpful for your research, please consider citing using the following BibTeX entry:
 ```bibtex
-@inproceedings{tempo2026closing,
-      title={Closing the Representational Gap for VLAs in Dynamic Settings},
-      author={TODO},
-      booktitle={Conference on Robot Learning (CoRL)},
+@misc{feng2026tempolearningtemporalcontext,
+      title={TEMPO: Learning Temporal Context for Dynamic Robot Manipulation}, 
+      author={Zhenyang Feng and Jimin Heo and Erik B. Sudderth and Unnat Jain},
       year={2026},
-      url={TODO},
+      eprint={2609.16864},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2609.16864}, 
 }
 ```
