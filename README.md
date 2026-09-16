@@ -1,12 +1,8 @@
-# Closing the Representational Gap for VLAs in Dynamic Settings
+# TEMPO: Learning Temporal Context for Dynamic Robot Manipulation
 
-**Temporal Encoding for Motion-aware Policy (TEMPO)**
+[Zhenyang Feng](https://defisch.github.io/), Jimin Heo, [Erik B. Sudderth](https://ics.uci.edu/~sudderth/), [Unnat Jain](https://unnat.github.io/)
 
-<!-- TODO: affiliation --> _Affiliation_
-
-<!-- TODO: author list with links --> _Author One, Author Two, Author Three_
-
-[[arXiv]](#-citation) [[Project Page]](#-citation) [[BibTeX]](#-citation)
+[[arXiv]](https://arxiv.org/abs/2609.16864) [[Project Page]](https://tempo-robot.github.io/) [[BibTeX]](#-citation)
 
 <!-- TODO: add the method figure at assets/main.png and uncomment
 ![main figure](assets/main.png)
