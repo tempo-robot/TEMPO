@@ -12,13 +12,13 @@ def _get_frozen_state(config: _pi0_config.Pi0Config) -> nnx.State:
 
 
 def test_pi0_full_finetune():
-    config = _pi0_config.Pi0Config()
+    config = _pi0_config.Pi0Config(predict_ut=False)
     state = _get_frozen_state(config)
     assert len(state) == 0
 
 
 def test_pi0_gemma_lora():
-    config = _pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora")
+    config = _pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", predict_ut=False)
     state = _get_frozen_state(config)
     assert len(state) == 9
     assert all("lora" not in p for p in state)
@@ -27,7 +27,7 @@ def test_pi0_gemma_lora():
 
 
 def test_pi0_action_expert_lora():
-    config = _pi0_config.Pi0Config(action_expert_variant="gemma_300m_lora")
+    config = _pi0_config.Pi0Config(action_expert_variant="gemma_300m_lora", predict_ut=False)
     state = _get_frozen_state(config)
     # excluding embedder, rest of the params should be same as gemma_lora.
     assert len(state) == 8
@@ -38,7 +38,9 @@ def test_pi0_action_expert_lora():
 
 
 def test_pi0_all_lora():
-    config = _pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora")
+    config = _pi0_config.Pi0Config(
+        paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora", predict_ut=False
+    )
     state = _get_frozen_state(config)
     # sum of gemma_lora and action_expert_lora's frozen params.
     assert len(state) == 17
