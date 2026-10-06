@@ -11,7 +11,7 @@ from openpi.shared import nnx_utils
 
 def test_pi0_model():
     key = jax.random.key(0)
-    config = pi0_config.Pi0Config()
+    config = pi0_config.Pi0Config(predict_ut=False)
     model = config.create(key)
 
     batch_size = 2
@@ -26,7 +26,7 @@ def test_pi0_model():
 
 def test_pi0_lora_model():
     key = jax.random.key(0)
-    config = pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora")
+    config = pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", predict_ut=False)
     model = config.create(key)
 
     batch_size = 2
@@ -78,7 +78,7 @@ def test_pi0_fast_lora_model():
 @pytest.mark.manual
 def test_model_restore():
     key = jax.random.key(0)
-    config = pi0_config.Pi0Config()
+    config = pi0_config.Pi0Config(predict_ut=False)
 
     batch_size = 2
     obs, act = config.fake_obs(batch_size), config.fake_act(batch_size)

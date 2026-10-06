@@ -18,7 +18,7 @@ import os
 import time
 from pathlib import Path
 
-import cv2
+import av
 import numpy as np
 import pyarrow.parquet as pq
 import torch
@@ -37,15 +37,13 @@ HEAD_KEY = "observation.images.head"
 
 
 def read_video_rgb(mp4: Path) -> np.ndarray:
-    """Decode an mp4 to numpy [T, H, W, 3] uint8 (RGB)."""
-    cap = cv2.VideoCapture(str(mp4))
-    out = []
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        out.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    cap.release()
+    """Decode an mp4 to numpy [T, H, W, 3] uint8 (RGB).
+
+    Uses PyAV rather than OpenCV: LeRobot encodes AV1 by default, and the FFmpeg bundled with
+    opencv-python < 4.14 cannot decode it (VideoCapture silently returns no frames).
+    """
+    with av.open(str(mp4)) as container:
+        out = [frame.to_ndarray(format="rgb24") for frame in container.decode(video=0)]
     if not out:
         raise RuntimeError(f"empty video: {mp4}")
     return np.stack(out, axis=0)

@@ -137,9 +137,9 @@ below it, or from `checkpoints/pi05_base_pytorch`. To regress action chunks inst
 ### 3. Inference
 
 ```bash
-uv run scripts/serve_policy.py policy:checkpoint \
+uv run scripts/serve_policy.py --port=8000 policy:checkpoint \
     --policy.config=pi05_yam_tempo_ut_dynamic_handover \
-    --policy.dir=checkpoints/pi05_yam_tempo_ut_dynamic_handover/my_run/5000 --port=8000
+    --policy.dir=checkpoints/pi05_yam_tempo_ut_dynamic_handover/my_run/5000
 ```
 
 ```python
@@ -152,6 +152,7 @@ action_chunk = client.infer({
     "prompt": "dynamic handover",
     "sam2_tokens": sam2_tokens,           # (64, 256) float32, TEMPO-MOT
     "action_history": action_history,     # (10, A) float32 bucket means, TEMPO-ACT
+    "action_history_is_pad": history_pad, # (10,) bool, True for buckets entirely before the episode start
 })["actions"]                             # (action_horizon, A) raw units
 ```
 
