@@ -1,6 +1,6 @@
 # TEMPO: Learning Temporal Context for Dynamic Robot Manipulation
 
-[Zhenyang Feng](https://defisch.github.io/), Jimin Heo, [Erik B. Sudderth](https://ics.uci.edu/~sudderth/), [Unnat Jain](https://unnat.github.io/)
+[Zhenyang Feng](https://defisch.github.io/), [Jimin Heo](https://jimin-heo.github.io/), [Erik B. Sudderth](https://ics.uci.edu/~sudderth/), [Unnat Jain](https://unnat.github.io/)
 
 [[arXiv]](https://arxiv.org/abs/2609.16864) [[Project Page]](https://tempo-robot.github.io/) [[BibTeX]](#-citation)
 
